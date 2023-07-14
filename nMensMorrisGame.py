@@ -282,45 +282,30 @@ class BoardGui(Frame):
         time.sleep(0.5)
 
         # move opponent
-        self.randomPlayerMove("O")
+        # THIS IS WHERE WE IMPLEMENT THE ALPHA-BETA, MINMAX, etc!!!!!!
+        if self.player2.type == "Random":
+            print("Executing random move")
+            game.randomPlayerMove(self, "O")
 
+        elif self.player2.type == "MinMax":
+            print("Executing MinMax move")
+            game.minmax_decision(self, "O")
 
-    def randomPlayerMove(self, player):
-        """randomly select a move for player"""
-        curPlayer = self.player1
-        if player == "O":
-            curPlayer = self.player2
+        elif self.player2.type == "AlphaBeta":
+            print("Executing AlphaBeta move")
+            self.randomPlayerMove("O")
 
-        if curPlayer.step == GameSteps[0]:
-            x, y = self.randomFreePick()
-            if len(curPlayer.poses) < curPlayer.livePieces:  # means we are in phase 1 of the game still putting down new pieces
-                curPlayer.poses.append((x, y))
-                button = self.getButton((x, y))
-                if button is None:
-                    print("!!ERROR! getButton returned null. Error")
-                    return
+        elif self.player2.type == "AlphaBetaCutoff":
+            print("Executing AlphaBetaCutoff move")
+            self.randomPlayerMove("O")
 
-                button.config(text=player, state='disabled', disabledforeground="green")
-                print("randomPlayerMove: button.text=", button['text'], "pos: ", x, ", ", y)
-                self.checkMillForPlayer(curPlayer, (x, y))
-                if len(curPlayer.poses) == curPlayer.livePieces:
-                    curPlayer.step = GameSteps[1]
-                    self.enablePlayerCells(curPlayer.poses)
+        elif self.player2.type == "ExpectimaxCutoff":
+            print("Executing ExpectimaxCuttoff move")
+            self.randomPlayerMove("O")
 
-        else:   # means we are in phase 2 mode, meaning player need to move a piece.
-            potentialMoves = self.findPossibleMoves(curPlayer)   # find all possible moves for this player
-            if len(potentialMoves) == 0:
-                print("!No more move possible for player ", player)
-                return
+        else:
+            self.randomPlayerMove("O")
 
-            start, moves = random.choice(list(potentialMoves.items()))  # pick a piece to move randomly
-            end = random.choice(moves) # pick a legal move for the selected piece randomly
-
-            # apply the move:
-            if self.move(start, end, player) == True:
-                    curPlayer.poses.remove(start)
-                    curPlayer.poses.append(end)
-                    self.checkMillForPlayer(curPlayer, end)
 
 
     def checkMillForPlayer(self, player, pos):

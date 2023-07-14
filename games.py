@@ -3,6 +3,7 @@
 import copy
 import itertools
 import random
+from pprint import pprint
 from collections import namedtuple
 
 import numpy as np
@@ -12,219 +13,7 @@ from utils import vector_add
 GameState = namedtuple('GameState', 'to_move, utility, board, moves')
 StochasticGameState = namedtuple('StochasticGameState', 'to_move, utility, board, moves, chance')
 
-
-GameState = namedtuple('GameState', 'to_move, utility, board, moves')
-
-def gen_state(to_move='X', x_positions=[], o_positions=[], h=3, v=3):
-    """Given whose turn it is to move, the positions of X's on the board, the
-    positions of O's on the board, and, (optionally) number of rows, columns
-    and how many consecutive X's or O's required to win, return the corresponding
-    game state"""
-
-    moves = set([(x, y) for x in range(1, h + 1) for y in range(1, v + 1)]) - set(x_positions) - set(o_positions)
-    moves = list(moves)
-    board = {}
-    for pos in x_positions:
-        board[pos] = 'X'
-    for pos in o_positions:
-        board[pos] = 'O'
-    return GameState(to_move=to_move, utility=0, board=board, moves=moves)
-
-
-# ______________________________________________________________________________
-# MinMax Search
-
-
-def minmax_decision(state, game):
-    """Given a state in a game, calculate the best move by searching
-    forward all the way to the terminal states. [Figure 5.3]"""
-
-    player = game.to_move(state)
-
-    def max_value(state):
-        if game.terminal_test(state):
-            return game.utility(state, player)
-        v = -np.inf
-        for a in game.actions(state):
-            v = max(v, min_value(game.result(state, a)))
-        return v
-
-    def min_value(state):
-        if game.terminal_test(state):
-            return game.utility(state, player)
-        v = np.inf
-        for a in game.actions(state):
-            v = min(v, max_value(game.result(state, a)))
-        return v
-
-    # Body of minmax_decision:
-    return max(game.actions(state), key=lambda a: min_value(game.result(state, a)))
-
-
-# ______________________________________________________________________________
-
-
-def expect_minmax(state, game):
-    """
-    [Figure 5.11]
-    Return the best move for a player after dice are thrown. The game tree
-	includes chance nodes along with min and max nodes.
-	"""
-    player = game.to_move(state)
-
-    def max_value(state):
-        v = -np.inf
-        for a in game.actions(state):
-            v = max(v, chance_node(state, a))
-        return v
-
-    def min_value(state):
-        v = np.inf
-        for a in game.actions(state):
-            v = min(v, chance_node(state, a))
-        return v
-
-    def chance_node(state, action):
-        res_state = game.result(state, action)
-        if game.terminal_test(res_state):
-            return game.utility(res_state, player)
-        sum_chances = 0
-        num_chances = len(game.chances(res_state))
-        for chance in game.chances(res_state):
-            res_state = game.outcome(res_state, chance)
-            util = 0
-            if res_state.to_move == player:
-                util = max_value(res_state)
-            else:
-                util = min_value(res_state)
-            sum_chances += util * game.probability(chance)
-        return sum_chances / num_chances
-
-    # Body of expect_minmax:
-    return max(game.actions(state), key=lambda a: chance_node(state, a), default=None)
-
-
-def alpha_beta_search(state, game):
-    """Search game to determine best action; use alpha-beta pruning.
-    As in [Figure 5.7], this version searches all the way to the leaves."""
-
-    player = game.to_move(state)
-
-    # Functions used by alpha_beta
-    def max_value(state, alpha, beta):
-        if game.terminal_test(state):
-            return game.utility(state, player)
-        v = -np.inf
-        for a in game.actions(state):
-            v = max(v, min_value(game.result(state, a), alpha, beta))
-            if v >= beta:
-                return v
-            alpha = max(alpha, v)
-        return v
-
-    def min_value(state, alpha, beta):
-        if game.terminal_test(state):
-            return game.utility(state, player)
-        v = np.inf
-        for a in game.actions(state):
-            v = min(v, max_value(game.result(state, a), alpha, beta))
-            if v <= alpha:
-                return v
-            beta = min(beta, v)
-        return v
-
-    # Body of alpha_beta_search:
-    best_score = -np.inf
-    beta = np.inf
-    best_action = None
-    for a in game.actions(state):
-        v = min_value(game.result(state, a), best_score, beta)
-        if v > best_score:
-            best_score = v
-            best_action = a
-    return best_action
-
-
-def alpha_beta_cutoff_search(state, game, d=4, cutoff_test=None, eval_fn=None):
-    """Search game to determine best action; use alpha-beta pruning.
-    This version cuts off search and uses an evaluation function."""
-
-    player = game.to_move(state)
-
-    # Functions used by alpha_beta
-    def max_value(state, alpha, beta, depth):
-        if cutoff_test(state, depth):
-            return eval_fn(state)
-        v = -np.inf
-        for a in game.actions(state):
-            v = max(v, min_value(game.result(state, a), alpha, beta, depth + 1))
-            if v >= beta:
-                return v
-            alpha = max(alpha, v)
-        return v
-
-    def min_value(state, alpha, beta, depth):
-        if cutoff_test(state, depth):
-            return eval_fn(state)
-        v = np.inf
-        for a in game.actions(state):
-            v = min(v, max_value(game.result(state, a), alpha, beta, depth + 1))
-            if v <= alpha:
-                return v
-            beta = min(beta, v)
-        return v
-
-    # Body of alpha_beta_cutoff_search starts here:
-    # The default test cuts off at depth d or at a terminal state
-    cutoff_test = (cutoff_test or (lambda state, depth: depth > d or game.terminal_test(state)))
-    eval_fn = eval_fn or (lambda state: game.utility(state, player))
-    best_score = -np.inf
-    beta = np.inf
-    best_action = None
-    for a in game.actions(state):
-        v = min_value(game.result(state, a), best_score, beta, 1)
-        if v > best_score:
-            best_score = v
-            best_action = a
-    return best_action
-
-
-# ______________________________________________________________________________
-# Players for Games
-
-def query_player(game, state):
-    """Make a move by querying standard input."""
-    print("current state:")
-    game.display(state)
-    print("available moves: {}".format(game.actions(state)))
-    print("")
-    move = None
-    if game.actions(state):
-        move_string = input('Your move? ')
-        try:
-            move = eval(move_string)
-        except NameError:
-            move = move_string
-    else:
-        print('no legal moves: passing turn to next player')
-    return move
-
-
-def random_player(game, state):
-    """A player that chooses a legal move at random."""
-    return random.choice(game.actions(state)) if game.actions(state) else None
-
-
-def alpha_beta_player(game, state):
-    return alpha_beta_search(state, game)
-
-
-def minmax_player(game,state):
-    return minmax_decision(state,game)
-
-
-def expect_minmax_player(game, state):
-    return expect_minmax(state, game)
+GameSteps = ['Setup', 'Move']
 
 
 # ______________________________________________________________________________
@@ -542,6 +331,257 @@ class NMensMorris(Game):
         n -= 1  # Because we counted move itself twice
         return n >= self.k
 
+    def gen_state(to_move='X', x_positions=[], o_positions=[], h=3, v=3):
+        """Given whose turn it is to move, the positions of X's on the board, the
+        positions of O's on the board, and, (optionally) number of rows, columns
+        and how many consecutive X's or O's required to win, return the corresponding
+        game state"""
+
+        moves = set([(x, y) for x in range(1, h + 1) for y in range(1, v + 1)]) - set(x_positions) - set(o_positions)
+        moves = list(moves)
+        board = {}
+        for pos in x_positions:
+            board[pos] = 'X'
+        for pos in o_positions:
+            board[pos] = 'O'
+        return GameState(to_move=to_move, utility=0, board=board, moves=moves)
+
+
+    def randomPlayerMove(self, playerMove, symbol):
+        """randomly select a move for player, playermove refers to BoardGUI object from nMensMorrisGame, whereas self is NmensMorris class in games.py!"""
+        obj_vars = vars(playerMove)
+        #pprint(obj_vars)
+        #print(type(playerMove))
+        #curPlayer = playerMove.player1
+        if symbol == "O":
+            curPlayer = playerMove.player2
+
+        if curPlayer.step == GameSteps[0]:
+            x, y = self.randomFreePick(playerMove)
+            if len(curPlayer.poses) < curPlayer.livePieces:  # means we are in phase 1 of the game still putting down new pieces
+                curPlayer.poses.append((x, y))
+                button = playerMove.getButton((x, y))
+                if button is None:
+                    print("!!ERROR! getButton returned null. Error")
+                    return
+
+                button.config(text=symbol, state='disabled', disabledforeground="green")
+                print("randomPlayerMove: button.text=", button['text'], "pos: ", x, ", ", y)
+                playerMove.checkMillForPlayer(curPlayer, (x, y))
+                if len(curPlayer.poses) == curPlayer.livePieces:
+                    curPlayer.step = GameSteps[1]
+                    playerMove.enablePlayerCells(curPlayer.poses)
+
+        else:   # means we are in phase 2 mode, meaning player need to move a piece.
+            potentialMoves = playerMove.findPossibleMoves(curPlayer)   # find all possible moves for this player
+            if len(potentialMoves) == 0:
+                print("!No more move possible for player ", symbol)
+                return
+
+            start, moves = random.choice(list(potentialMoves.items()))  # pick a piece to move randomly
+            end = random.choice(moves) # pick a legal move for the selected piece randomly
+
+            # apply the move:
+            if playerMove.move(start, end, symbol) == True:
+                    curPlayer.poses.remove(start)
+                    curPlayer.poses.append(end)
+                    playerMove.checkMillForPlayer(curPlayer, end)
+
+    def randomFreePick(self, playerMove):
+        """Randomly pick a free position on the board"""
+        freeCells = []
+        for playerMove.cellrow in playerMove.cells:
+            for playerMove.cell in playerMove.cellrow:
+                if playerMove.cell.button["text"] == "":
+                    freeCells.append(tuple(playerMove.cell.pos))
+
+        aFreePos = random.choice(freeCells)
+        a, b = aFreePos
+        return a, b
+        # ______________________________________________________________________________
+        # MinMax Search
+
+    def minmax_decision(self, state, game):
+        """Given a state in a game, calculate the best move by searching
+        forward all the way to the terminal states. [Figure 5.3]"""
+
+        player = game.to_move(state)
+
+        def max_value(state):
+            if game.terminal_test(state):
+                return game.utility(state, player)
+            v = -np.inf
+            for a in game.actions(state):
+                v = max(v, min_value(game.result(state, a)))
+            return v
+
+        def min_value(state):
+            if game.terminal_test(state):
+                return game.utility(state, player)
+            v = np.inf
+            for a in game.actions(state):
+                v = min(v, max_value(game.result(state, a)))
+            return v
+
+        # Body of minmax_decision:
+        return max(game.actions(state), key=lambda a: min_value(game.result(state, a)))
+
+    def minmax_player(self, game, state):
+        return self.minmax_decision(state, game)
+    # ______________________________________________________________________________
+
+    def expect_minmax(state, game):
+        """
+        [Figure 5.11]
+        Return the best move for a player after dice are thrown. The game tree
+        includes chance nodes along with min and max nodes.
+        """
+        player = game.to_move(state)
+
+        def max_value(state):
+            v = -np.inf
+            for a in game.actions(state):
+                v = max(v, chance_node(state, a))
+            return v
+
+        def min_value(state):
+            v = np.inf
+            for a in game.actions(state):
+                v = min(v, chance_node(state, a))
+            return v
+
+        def chance_node(state, action):
+            res_state = game.result(state, action)
+            if game.terminal_test(res_state):
+                return game.utility(res_state, player)
+            sum_chances = 0
+            num_chances = len(game.chances(res_state))
+            for chance in game.chances(res_state):
+                res_state = game.outcome(res_state, chance)
+                util = 0
+                if res_state.to_move == player:
+                    util = max_value(res_state)
+                else:
+                    util = min_value(res_state)
+                sum_chances += util * game.probability(chance)
+            return sum_chances / num_chances
+
+        # Body of expect_minmax:
+        return max(game.actions(state), key=lambda a: chance_node(state, a), default=None)
+
+def alpha_beta_search(state, game):
+    """Search game to determine best action; use alpha-beta pruning.
+    As in [Figure 5.7], this version searches all the way to the leaves."""
+
+    player = game.to_move(state)
+
+    # Functions used by alpha_beta
+    def max_value(state, alpha, beta):
+        if game.terminal_test(state):
+            return game.utility(state, player)
+        v = -np.inf
+        for a in game.actions(state):
+            v = max(v, min_value(game.result(state, a), alpha, beta))
+            if v >= beta:
+                return v
+            alpha = max(alpha, v)
+        return v
+
+    def min_value(state, alpha, beta):
+        if game.terminal_test(state):
+            return game.utility(state, player)
+        v = np.inf
+        for a in game.actions(state):
+            v = min(v, max_value(game.result(state, a), alpha, beta))
+            if v <= alpha:
+                return v
+            beta = min(beta, v)
+        return v
+
+    # Body of alpha_beta_search:
+    best_score = -np.inf
+    beta = np.inf
+    best_action = None
+    for a in game.actions(state):
+        v = min_value(game.result(state, a), best_score, beta)
+        if v > best_score:
+            best_score = v
+            best_action = a
+    return best_action
+
+def alpha_beta_cutoff_search(state, game, d=4, cutoff_test=None, eval_fn=None):
+    """Search game to determine best action; use alpha-beta pruning.
+    This version cuts off search and uses an evaluation function."""
+
+    player = game.to_move(state)
+
+    # Functions used by alpha_beta
+    def max_value(state, alpha, beta, depth):
+        if cutoff_test(state, depth):
+            return eval_fn(state)
+        v = -np.inf
+        for a in game.actions(state):
+            v = max(v, min_value(game.result(state, a), alpha, beta, depth + 1))
+            if v >= beta:
+                return v
+            alpha = max(alpha, v)
+        return v
+
+    def min_value(state, alpha, beta, depth):
+        if cutoff_test(state, depth):
+            return eval_fn(state)
+        v = np.inf
+        for a in game.actions(state):
+            v = min(v, max_value(game.result(state, a), alpha, beta, depth + 1))
+            if v <= alpha:
+                return v
+            beta = min(beta, v)
+        return v
+
+    # Body of alpha_beta_cutoff_search starts here:
+    # The default test cuts off at depth d or at a terminal state
+    cutoff_test = (cutoff_test or (lambda state, depth: depth > d or game.terminal_test(state)))
+    eval_fn = eval_fn or (lambda state: game.utility(state, player))
+    best_score = -np.inf
+    beta = np.inf
+    best_action = None
+    for a in game.actions(state):
+        v = min_value(game.result(state, a), best_score, beta, 1)
+        if v > best_score:
+            best_score = v
+            best_action = a
+    return best_action
+
+# ______________________________________________________________________________
+# Players for Games
+
+def query_player(game, state):
+    """Make a move by querying standard input."""
+    print("current state:")
+    game.display(state)
+    print("available moves: {}".format(game.actions(state)))
+    print("")
+    move = None
+    if game.actions(state):
+        move_string = input('Your move? ')
+        try:
+            move = eval(move_string)
+        except NameError:
+            move = move_string
+    else:
+        print('no legal moves: passing turn to next player')
+    return move
+
+def random_player(game, state):
+    """A player that chooses a legal move at random."""
+    return random.choice(game.actions(state)) if game.actions(state) else None
+
+def alpha_beta_player(game, state):
+    return alpha_beta_search(state, game)
+
+
+def expect_minmax_player(self, game, state):
+    return self.expect_minmax(state, game)
 
 
 class Backgammon(StochasticGame):
