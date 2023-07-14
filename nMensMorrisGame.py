@@ -107,7 +107,6 @@ class BoardGui(Frame):
          Each clicking on next plays one sequence of Player1-Player2"""
         nextButton = Button(master=parent, text="next", borderwidth=1, border=1)
         nextButton.grid(row=self.dims, column=4, padx=1, pady=5)
-
         depthLabel = Label(master=parent, text="Depth:", width=10)
         depthLabel.grid(row=self.dims, column=5, padx=1, pady=5)
         depthStr = StringVar()
@@ -289,22 +288,22 @@ class BoardGui(Frame):
 
         elif self.player2.type == "MinMax":
             print("Executing MinMax move")
-            game.minmax_decision(self, "O")
+            game.minmax_decision(self, "0")
 
         elif self.player2.type == "AlphaBeta":
             print("Executing AlphaBeta move")
-            self.randomPlayerMove("O")
+            self.randomPlayerMove(self, "O")
 
         elif self.player2.type == "AlphaBetaCutoff":
             print("Executing AlphaBetaCutoff move")
-            self.randomPlayerMove("O")
+            self.randomPlayerMove(self, "O")
 
         elif self.player2.type == "ExpectimaxCutoff":
             print("Executing ExpectimaxCuttoff move")
-            self.randomPlayerMove("O")
+            self.randomPlayerMove(self, "O")
 
         else:
-            self.randomPlayerMove("O")
+            game.randomPlayerMove(self, "O")
 
 
 
@@ -351,17 +350,6 @@ class BoardGui(Frame):
             self.player2Label["text"]="LivePieces_2:"+str(self.player2.livePieces)
             time.sleep(0.5)
 
-    def randomFreePick(self):
-        """Randomly pick a free position on the board"""
-        freeCells = []
-        for cellrow in self.cells:
-            for cell in cellrow:
-                if cell.button["text"] == "":
-                    freeCells.append(tuple(cell.pos))
-
-        aFreePos = random.choice(freeCells)
-        a, b = aFreePos
-        return a, b
 
     def checkStatus(self, player):
         """ check if player is still in the game and not lost"""

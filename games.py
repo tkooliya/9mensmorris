@@ -349,11 +349,11 @@ class NMensMorris(Game):
 
     def randomPlayerMove(self, playerMove, symbol):
         """randomly select a move for player, playermove refers to BoardGUI object from nMensMorrisGame, whereas self is NmensMorris class in games.py!"""
-        obj_vars = vars(playerMove)
+        #obj_vars = vars(playerMove)
         #pprint(obj_vars)
         #print(type(playerMove))
-        #curPlayer = playerMove.player1
-        if symbol == "O":
+        curPlayer = playerMove.player1
+        if playerMove.to_move == "O":
             curPlayer = playerMove.player2
 
         if curPlayer.step == GameSteps[0]:
@@ -401,33 +401,33 @@ class NMensMorris(Game):
         # ______________________________________________________________________________
         # MinMax Search
 
-    def minmax_decision(self, state, game):
+    def minmax_decision(self, state, symbol):
         """Given a state in a game, calculate the best move by searching
         forward all the way to the terminal states. [Figure 5.3]"""
 
-        player = game.to_move(state)
+        player = symbol
 
         def max_value(state):
-            if game.terminal_test(state):
-                return game.utility(state, player)
+            if state.terminal_test(state):
+                return state.utility(state, player)
             v = -np.inf
-            for a in game.actions(state):
-                v = max(v, min_value(game.result(state, a)))
+            for a in state.actions(state):
+                v = max(v, min_value(state.result(state, a)))
             return v
 
         def min_value(state):
-            if game.terminal_test(state):
-                return game.utility(state, player)
+            if state.terminal_test(state):
+                return state.utility(state, player)
             v = np.inf
-            for a in game.actions(state):
-                v = min(v, max_value(game.result(state, a)))
+            for a in state.actions(state):
+                v = min(v, max_value(state.result(state, a)))
             return v
 
         # Body of minmax_decision:
-        return max(game.actions(state), key=lambda a: min_value(game.result(state, a)))
+        return max(self.actions(state), key=lambda a: min_value(self.result(state, a)))
 
-    def minmax_player(self, game, state):
-        return self.minmax_decision(state, game)
+    def minmax_player(self, state):
+        return self.minmax_decision(state)
     # ______________________________________________________________________________
 
     def expect_minmax(state, game):
