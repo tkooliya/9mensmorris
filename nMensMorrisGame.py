@@ -4,6 +4,7 @@ import time
 from tkinter import *
 import tkinter.font as font
 from games import NMensMorris
+import pprint
 
 """
 Playertype Options are Human: # means this is human player. Then the player has to manually click on spots on gameboard to make a move
@@ -79,7 +80,7 @@ class BoardGui(Frame):
                 elif(i==3 and j==3):
                     frame.config(height= 30, width=30, bg='black')
                 else:
-                    frame.config(height=3, bg='black', width=30)
+                    frame.config(height=3, bg='Black', width=30)
 
             self.cells.append(cellsInFrame)
 
@@ -106,7 +107,7 @@ class BoardGui(Frame):
 
         """'nextbutton' is used to step through the game when 2 AI players are playing against each other.
          Each clicking on next plays one sequence of Player1-Player2"""
-        nextButton = Button(master=parent, text="next", borderwidth=1, border=1)
+        nextButton = Button(master=parent, text="next", borderwidth=1, border=1, command=self.next_step)
         nextButton.grid(row=self.dims, column=4, padx=1, pady=5)
         depthLabel = Label(master=parent, text="Depth:", width=10)
         depthLabel.grid(row=self.dims, column=5, padx=1, pady=5)
@@ -281,7 +282,12 @@ class BoardGui(Frame):
 
         else:
             #TODO: NEED TO IMPLEMENT THE LOGIC RELATED TO IF PLAYER 1 is AI!
-            print("NEED TO IMPLEMENT THIS LOGIC")
+            """Method to step through the game. This can be called by the 'next' button."""
+            # change player
+            if self.to_move == "X":
+                game.randomPlayerMove(self)
+                self.to_move = "O"
+
 
         time.sleep(0.5)
 
@@ -289,10 +295,13 @@ class BoardGui(Frame):
         # THIS IS WHERE WE IMPLEMENT THE ALPHA-BETA, MINMAX, etc!!!!!!
         if self.player2.type == "Random":
             print("Executing random move")
+            self.to_move = "O"
             game.randomPlayerMove(self)
+            self.to_move = "X"
 
         elif self.player2.type == "MinMax":
             print("Executing MinMax move")
+            self.to_move = "O"
             game.minmax_decision(self)
 
         elif self.player2.type == "AlphaBeta":
@@ -310,7 +319,10 @@ class BoardGui(Frame):
         else:
             game.randomPlayerMove(self, "O")
 
-
+#TODO: NEED TO RE-WRITE NEXT_STEP LOGIC
+    def next_step(self):
+        """Method to step through the game. This can be called by the 'next' button."""
+        self.on_click(self)
 
     def checkMillForPlayer(self, player, pos):
         """check if a mill has happened for player as result of the latest move to pos, if so apply the result which is remove
@@ -341,9 +353,13 @@ class BoardGui(Frame):
         if opponent.sym == player.sym:
             opponent = self.player2
 
+        print("this is player 1 positions:" + str(self.player1.poses))
+        print("this is player 2 positions:" + str(self.player2.poses))
+
 
         for i in range(len(mills)):
             print("Mill for ", player.sym, ": ", str(mills[i]))
+            print(opponent.poses)
             pos2cull = random.choice(opponent.poses)
             print("culling ", str(pos2cull), " from player ", opponent.sym)
             thebutton = self.getButton(pos2cull)
