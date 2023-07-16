@@ -57,6 +57,7 @@ class BoardGui(Frame):
         self.player2 = NMMPlayer(1, PlayerType[1], "O")
         self.game = board
         self.parent = parent
+        self.moves = []
 
         # setup the game board:
         for i in range(self.dims):
@@ -246,37 +247,41 @@ class BoardGui(Frame):
         """ is used to step through the game. If Player1 is Human, then on_click is called when Human
         player clicks on an available spot. In case of AI vs AI playing, on_click is called as result
         of pressing 'next' button. """
-        x, y = self.getCoordinates(button)
-
-        if self.player1.step == GameSteps[0]:
-            if len(self.player1.poses) < self.player1.livePieces:  # means we are in phase 1 of the game still putting down new pieces
-                self.player1.poses.append((x, y))
-                button.config(text=self.to_move, state='disabled', disabledforeground="green")
-                print("onClick: button.text=", button['text'], "pos: ", x, ", ", y)
-                self.checkMillForPlayer(self.player1, (x, y))
-                if len(self.player1.poses) == self.player1.livePieces:
-                    self.player1.step = GameSteps[1]
-                    self.enablePlayerCells(self.player1.poses)
-
-        else:   # means we are in phase 2 mode, meaning player need to move a piece.
-            # Moving logic bellow has 2 steps: to move a piece, player first select a piece by 'pick'ing a piece in first step. Then in next click, it will pick where
-            # to move the 'picked' piece.
-            if (x, y) in self.player1.poses:
-                self.player1.picked = (x, y)
-                #print("item at cell index ", self.player1.picked , " picked")
-                return
-            elif self.player1.picked is not None:
-                start = self.player1.picked
-                #print("attempt to move a piece from loc [", start[0], ", ",start[1], "] to location [", x, ",", y, "]")
-                if self.move(start, (x,y), self.player1.sym) == True:
-                    self.player1.poses.remove(start)
-                    self.player1.poses.append((x,y))
+        if self.player1.type == "Human":
+            x, y = self.getCoordinates(button)
+            if self.player1.step == GameSteps[0]:
+                if len(self.player1.poses) < self.player1.livePieces:  # means we are in phase 1 of the game still putting down new pieces
+                    self.player1.poses.append((x, y))
+                    button.config(text=self.to_move, state='disabled', disabledforeground="green")
+                    print("onClick: button.text=", button['text'], "pos: ", x, ", ", y)
                     self.checkMillForPlayer(self.player1, (x, y))
+                    if len(self.player1.poses) == self.player1.livePieces:
+                        self.player1.step = GameSteps[1]
+                        self.enablePlayerCells(self.player1.poses)
 
-                self.player1.picked = None
-            else:
-                print("Warning: to move a piece, click on one of your existing pieces!")
-                return
+            else:   # means we are in phase 2 mode, meaning player need to move a piece.
+                # Moving logic bellow has 2 steps: to move a piece, player first select a piece by 'pick'ing a piece in first step. Then in next click, it will pick where
+                # to move the 'picked' piece.
+                if (x, y) in self.player1.poses:
+                    self.player1.picked = (x, y)
+                    #print("item at cell index ", self.player1.picked , " picked")
+                    return
+                elif self.player1.picked is not None:
+                    start = self.player1.picked
+                    #print("attempt to move a piece from loc [", start[0], ", ",start[1], "] to location [", x, ",", y, "]")
+                    if self.move(start, (x,y), self.player1.sym) == True:
+                        self.player1.poses.remove(start)
+                        self.player1.poses.append((x,y))
+                        self.checkMillForPlayer(self.player1, (x, y))
+
+                    self.player1.picked = None
+                else:
+                    print("Warning: to move a piece, click on one of your existing pieces!")
+                    return
+
+        else:
+            #TODO: NEED TO IMPLEMENT THE LOGIC RELATED TO IF PLAYER 1 is AI!
+            print("NEED TO IMPLEMENT THIS LOGIC")
 
         time.sleep(0.5)
 
@@ -284,11 +289,11 @@ class BoardGui(Frame):
         # THIS IS WHERE WE IMPLEMENT THE ALPHA-BETA, MINMAX, etc!!!!!!
         if self.player2.type == "Random":
             print("Executing random move")
-            game.randomPlayerMove(self, "O")
+            game.randomPlayerMove(self)
 
         elif self.player2.type == "MinMax":
             print("Executing MinMax move")
-            game.minmax_decision(self, "0")
+            game.minmax_decision(self)
 
         elif self.player2.type == "AlphaBeta":
             print("Executing AlphaBeta move")
@@ -336,6 +341,7 @@ class BoardGui(Frame):
         if opponent.sym == player.sym:
             opponent = self.player2
 
+
         for i in range(len(mills)):
             print("Mill for ", player.sym, ": ", str(mills[i]))
             pos2cull = random.choice(opponent.poses)
@@ -365,7 +371,7 @@ class BoardGui(Frame):
             possibleEnds = self.findPossibleEnds(player, pos)
             if len(possibleEnds) > 0:
                 moves[pos] = possibleEnds
-
+        print(moves)
         return moves
 
     def findPossibleEnds(self, player, pos):

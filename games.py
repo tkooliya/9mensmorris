@@ -256,12 +256,13 @@ class NMensMorris(Game):
             in form of the list of rows of cells on the board.
 
         '''
+
     def __init__(self, h=3, v=3, k=3):
         self.h = h
         self.v = v
         self.k = k
         board = []  # an array of 7 rows, each row an array of element from set {'X', 'O', '-'}.
-                    #. 'X' means occupied by Human player, 'O' is occupied by AI, '-' means still vacant
+        # . 'X' means occupied by Human player, 'O' is occupied by AI, '-' means still vacant
         self.initial = GameState(to_move='X', utility=0, board={}, moves={})
 
     def actions(self, state):
@@ -347,14 +348,16 @@ class NMensMorris(Game):
         return GameState(to_move=to_move, utility=0, board=board, moves=moves)
 
 
-    def randomPlayerMove(self, playerMove, symbol):
+    def randomPlayerMove(self, playerMove):
         """randomly select a move for player, playermove refers to BoardGUI object from nMensMorrisGame, whereas self is NmensMorris class in games.py!"""
         #obj_vars = vars(playerMove)
         #pprint(obj_vars)
         #print(type(playerMove))
+        symbol = playerMove.to_move
         curPlayer = playerMove.player1
-        if playerMove.to_move == "O":
+        if symbol == "X":
             curPlayer = playerMove.player2
+            symbol = "0"
 
         if curPlayer.step == GameSteps[0]:
             x, y = self.randomFreePick(playerMove)
@@ -401,31 +404,33 @@ class NMensMorris(Game):
         # ______________________________________________________________________________
         # MinMax Search
 
-    def minmax_decision(self, state, symbol):
+    # ______________________________________________________________________________
+    # MinMax Search
+
+    def minmax_decision(state, game):
         """Given a state in a game, calculate the best move by searching
         forward all the way to the terminal states. [Figure 5.3]"""
 
-        player = symbol
+        player = game.to_move(state)
 
         def max_value(state):
-            if state.terminal_test(state):
-                return state.utility(state, player)
+            if game.terminal_test(state):
+                return game.utility(state, player)
             v = -np.inf
-            for a in state.actions(state):
-                v = max(v, min_value(state.result(state, a)))
+            for a in game.actions(state):
+                v = max(v, min_value(game.result(state, a)))
             return v
 
         def min_value(state):
-            if state.terminal_test(state):
-                return state.utility(state, player)
+            if game.terminal_test(state):
+                return game.utility(state, player)
             v = np.inf
-            for a in state.actions(state):
-                v = min(v, max_value(state.result(state, a)))
+            for a in game.actions(state):
+                v = min(v, max_value(game.result(state, a)))
             return v
 
         # Body of minmax_decision:
-        return max(self.actions(state), key=lambda a: min_value(self.result(state, a)))
-
+        return max(game.actions(state), key=lambda a: min_value(game.result(state, a)))
     def minmax_player(self, state):
         return self.minmax_decision(state)
     # ______________________________________________________________________________
