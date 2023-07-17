@@ -303,7 +303,14 @@ class NMensMorris(Game):
 
     def terminal_test(self, state):
         """A state is terminal if it is won or there are no empty squares."""
-        return state.utility != 0 or len(state.moves) == 0
+        symbol = state.to_move
+        curPlayer = state.player1
+        if symbol == "O":
+            curPlayer = state.player2
+        #print(curPlayer.poses)
+        potentialMoves = state.findPossibleMoves(curPlayer)
+        #print(potentialMoves)
+        return self.utility != 0 or len(potentialMoves) == 0
 
     def display(self, state):
         board = state.game
@@ -418,26 +425,39 @@ class NMensMorris(Game):
 
         player = state.to_move
 
+
+        # Might need to play around with state.board references
         def max_value(state):
-            if state.terminal_test(state):
-                return state.utility(state, player)
+            print("Running the if in maxval: ")
+            if self.terminal_test(state.board):
+                return self.utility(state, player)
             v = -np.inf
-            for a in state.actions(state):
-                v = max(v, min_value(state.result(state, a)))
+            print("Running the for in maxval: ")
+            print(self.actions(state.board))
+            for a in self.actions(state.board):
+                v = max(v, min_value(self.result(state.board, a)))
             return v
 
         def min_value(state):
-            if state.terminal_test(state):
-                return state.utility(state, player)
+            print("Running the if in minval: ")
+            if self.terminal_test(state.board):
+                return self.utility(state, player)
             v = np.inf
-            for a in state.actions(state):
-                v = min(v, max_value(state.result(state, a)))
+            print("Running the for in minval: ")
+            print(self.actions(state.board))
+            for a in self.actions(state.board):
+                v = min(v, max_value(self.result(state.board, a)))
             return v
 
         # Body of minmax_decision:
-        return max(self.actions(state), key=lambda a: min_value(self.result(state, a)))
+        return max(state.game.actions(state), key=lambda a: min_value(state.game.result(state, a)))
     def minmax_player(self, state):
+        x, y = self.minmax_decision(state)
+        button = state.getButton((x, y))
+        button.config(text=state.to_move, state='disabled', disabledforeground="green")
         return self.minmax_decision(state)
+
+
     # ______________________________________________________________________________
 
     def expect_minmax(state, game):

@@ -302,7 +302,8 @@ class BoardGui(Frame):
         elif self.player2.type == "MinMax":
             print("Executing MinMax move")
             self.to_move = "O"
-            game.minmax_decision(self)
+            print(game.minmax_player(self))
+            self.to_move = 'X'
 
         elif self.player2.type == "AlphaBeta":
             print("Executing AlphaBeta move")
